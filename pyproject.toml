@@ -1,0 +1,17 @@
+[project]
+name = "misc-tools"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Stefane Fermigier", email = "sf@abilian.com" }
+]
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+generate-makefile = "misc_tools.generate_makefile:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

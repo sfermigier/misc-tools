@@ -1,0 +1,17 @@
+preview = true
+
+lint.select = [
+    "ALL",
+]
+
+lint.extend-ignore = [
+    # Later...
+    "ANN", # flake8-annotations
+    "D", # pydocstyle
+    "ERA", # eradicate
+    #  More specific
+    "COM812", # Missing trailing comma
+    "CPY001", # Missing copyright header
+    "E501", # Line too long
+    "ISC001",
+]
