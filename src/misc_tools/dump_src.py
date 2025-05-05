@@ -24,14 +24,15 @@ def main():
         dest='suffix',
         metavar='SUFFIX_STRING',
         type=str,
-        default="",
         help='Optional file suffix to filter by (e.g., "py").'
     )
 
     parser.add_argument(
-        'src',
+        'srcs',
         metavar='SOURCE_PATH',
         type=str,
+        default=[],
+        nargs='+',
         help='The source path to process.'
     )
 
@@ -43,16 +44,18 @@ def main():
             parser.print_help()
         sys.exit(e.code)
 
-    src_path = Path(args.src)
     suffix = args.suffix
 
-    if suffix:
-        files = sorted(src_path.rglob(f"*.{suffix}"))
-    else:
-        files = sorted(src_path.rglob("*"))
+    for src in args.srcs:
+        src_path = Path(src)
 
-    for path in files:
-        dump_file(path)
+        if suffix:
+            files = sorted(src_path.rglob(f"*.{suffix}"))
+        else:
+            files = sorted(src_path.rglob("*"))
+
+        for path in files:
+            dump_file(path)
 
 
 def dump_file(path):
@@ -79,9 +82,12 @@ def dump_file(path):
             print("Unknown file type", file=sys.stderr)
 
     print()
-    print(path.read_text())
+    text = path.read_text()
+    print(text)
     print()
     print()
+
+    print(f"{len(text)} bytes - {path}", file=sys.stderr)
 
 
 if __name__ == "__main__":
