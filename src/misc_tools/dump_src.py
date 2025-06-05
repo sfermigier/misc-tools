@@ -62,6 +62,12 @@ def dump_file(path):
     if not path.is_file():
         return
 
+    if path.name.startswith("."):
+        return
+
+    if any(part.startswith(".") for part in path.parts):
+        return
+
     actual_suffix = path.suffix[1:]
     match actual_suffix:
         case "py" | "php":
@@ -72,14 +78,20 @@ def dump_file(path):
             print("// " + 70 * "-")
             print(f"// File: {path}")
             print("// " + 70 * "-")
-        case "md":
+        case "md" | "html" | "xml":
             print("<!-- " + 70 * "-" + "-->")
             print(f"<!-- File: {path} -->")
             print("<!-- " + 70 * "-" + "-->")
+        case "java" | "groovy" | "c" | "cpp" | "h" | "css" | "oss":
+            print("/* " + 70 * "-" + " */")
+            print(f"/* File: {path} */")
+            print("/* " + 70 * "-" + " */")
         case "pyc":
             return
         case _:
             print("Unknown file type", file=sys.stderr)
+            print(f"File: {path}")
+            print("" + 70 * "-")
 
     print()
     text = path.read_text()

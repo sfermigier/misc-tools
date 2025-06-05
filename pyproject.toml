@@ -12,6 +12,7 @@ dependencies = []
 [project.scripts]
 generate-makefile = "misc_tools.generate_makefile:main"
 dump-src = "misc_tools.dump_src:main"
+md2pdf = "misc_tools.md2pdf:main"
 
 [build-system]
 requires = ["hatchling"]
