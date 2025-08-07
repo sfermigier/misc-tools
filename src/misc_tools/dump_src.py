@@ -55,7 +55,10 @@ def main():
             files = sorted(src_path.rglob("*"))
 
         for path in files:
-            dump_file(path)
+            try:
+                dump_file(path)
+            except Exception as e:
+                print(f"Error processing file {path}: {e}", file=sys.stderr)
 
 
 def dump_file(path):
@@ -68,7 +71,7 @@ def dump_file(path):
     if any(part.startswith(".") for part in path.parts):
         return
 
-    actual_suffix = path.suffix[1:]
+    actual_suffix = path.suffix[1:].lower()
     match actual_suffix:
         case "py" | "php":
             print(78 * "#")
@@ -78,7 +81,7 @@ def dump_file(path):
             print("// " + 70 * "-")
             print(f"// File: {path}")
             print("// " + 70 * "-")
-        case "md" | "html" | "xml":
+        case "md" | "html" | "xml" | "txt" | "json" | "yaml" | "yml" | "conf":
             print("<!-- " + 70 * "-" + "-->")
             print(f"<!-- File: {path} -->")
             print("<!-- " + 70 * "-" + "-->")
@@ -86,15 +89,22 @@ def dump_file(path):
             print("/* " + 70 * "-" + " */")
             print(f"/* File: {path} */")
             print("/* " + 70 * "-" + " */")
-        case "pyc":
+        case "pyc" | "db":
+            return
+        case "lock" | "png" | "jpg" | "jpeg" | "gif" | "svg" | "ico" | "drawio":
             return
         case _:
-            print("Unknown file type", file=sys.stderr)
+            print(f"Unknown file type {actual_suffix}", file=sys.stderr)
             print(f"File: {path}")
             print("" + 70 * "-")
 
     print()
-    text = path.read_text()
+    try:
+        text = path.read_text()
+    except UnicodeDecodeError:
+        print(f"Error: Cannot read file {path} as text. It may be binary or corrupted.", file=sys.stderr)
+        return
+
     print(text)
     print()
     print()
