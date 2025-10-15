@@ -1,64 +1,123 @@
 #!/usr/bin/env python
 """
 Usage:
-    python script_name.py <source_path> [--suffix <suffix_string>]
+    dump-src [SOURCE_PATH...] [--suffix SUFFIX_STRING] [-o OUTPUT_FILE]
 Example:
-    python script_name.py ./my_folder --suffix .py
-    python script_name.py /var/log
+    dump-src ./my_folder --suffix py,php,java
+    dump-src /var/log --suffix log
+    dump-src src tests --suffix py -o output.md
+    dump-src  # Defaults to current directory
 """
 
 import argparse
 import sys
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
+
+try:
+    __version__ = version("misc-tools")
+except PackageNotFoundError:
+    # When running as a script before installation
+    __version__ = "unknown"
 
 
 def main():
     """Parses arguments and prints them."""
 
     parser = argparse.ArgumentParser(
-        description='Dump a source tree to stdout.',
+        description="Dump a source tree to stdout or file.",
     )
 
     parser.add_argument(
-        '--suffix',
-        dest='suffix',
-        metavar='SUFFIX_STRING',
-        type=str,
-        help='Optional file suffix to filter by (e.g., "py").'
+        "--version", action="version", version=f"%(prog)s {__version__}"
     )
 
     parser.add_argument(
-        'srcs',
-        metavar='SOURCE_PATH',
+        "--suffix",
+        dest="suffix",
+        metavar="SUFFIX_STRING",
         type=str,
-        default=[],
-        nargs='+',
-        help='The source path to process.'
+        help='Optional file suffix(es) to filter by (e.g., "py" or "py,php,java").',
+    )
+
+    parser.add_argument(
+        "-o",
+        "--output",
+        dest="output",
+        metavar="OUTPUT_FILE",
+        type=str,
+        help="Output file (defaults to stdout).",
+    )
+
+    parser.add_argument(
+        "srcs",
+        metavar="SOURCE_PATH",
+        type=str,
+        default=["."],
+        nargs="*",
+        help="The source path(s) to process (defaults to current directory).",
     )
 
     try:
         args = parser.parse_args()
     except SystemExit as e:
         if e.code != 0:
-            print("Error: Invalid arguments provided.")
+            print("Error: Invalid arguments provided.", file=sys.stderr)
             parser.print_help()
         sys.exit(e.code)
 
-    suffix = args.suffix
+    # Default to current directory if no sources provided
+    if not args.srcs:
+        args.srcs = ["."]
 
-    for src in args.srcs:
-        src_path = Path(src)
+    # Parse suffixes (comma-separated)
+    suffixes = []
+    if args.suffix:
+        suffixes = [s.strip() for s in args.suffix.split(",")]
 
-        if suffix:
-            files = sorted(src_path.rglob(f"*.{suffix}"))
-        else:
-            files = sorted(src_path.rglob("*"))
+    # Get absolute path of output file to exclude it
+    output_path = None
+    if args.output:
+        output_path = Path(args.output).resolve()
 
-        for path in files:
-            try:
-                dump_file(path)
-            except Exception as e:
-                print(f"Error processing file {path}: {e}", file=sys.stderr)
+    # Redirect stdout to file if output is specified
+    output_file = None
+    original_stdout = sys.stdout
+    if args.output:
+        try:
+            output_file = Path(args.output).open("w")
+            sys.stdout = output_file
+        except OSError as e:
+            print(f"Error: Cannot open output file {args.output}: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    try:
+        for src in args.srcs:
+            src_path = Path(src)
+
+            if suffixes:
+                # Collect files with any of the specified suffixes
+                files = []
+                for suffix in suffixes:
+                    files.extend(src_path.rglob(f"*.{suffix}"))
+                files = sorted(set(files))  # Remove duplicates and sort
+            else:
+                files = sorted(src_path.rglob("*"))
+
+            for path in files:
+                # Skip the output file if it's in the source tree
+                if output_path and path.resolve() == output_path:
+                    continue
+
+                try:
+                    dump_file(path)
+                except Exception as e:
+                    print(f"Error processing file {path}: {e}", file=sys.stderr)
+    finally:
+        # Restore stdout and close output file
+        if output_file:
+            sys.stdout = original_stdout
+            output_file.close()
 
 
 def dump_file(path):
@@ -102,7 +161,10 @@ def dump_file(path):
     try:
         text = path.read_text()
     except UnicodeDecodeError:
-        print(f"Error: Cannot read file {path} as text. It may be binary or corrupted.", file=sys.stderr)
+        print(
+            f"Error: Cannot read file {path} as text. It may be binary or corrupted.",
+            file=sys.stderr,
+        )
         return
 
     print(text)
