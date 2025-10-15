@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 """
 Usage:
-    dump-src [SOURCE_PATH...] [--suffix SUFFIX_STRING] [-o OUTPUT_FILE]
+    dump-src [SOURCE_PATH...] [--suffix SUFFIX_STRING] [-o OUTPUT_FILE] [-x PATH]
 Example:
     dump-src ./my_folder --suffix py,php,java
     dump-src /var/log --suffix log
     dump-src src tests --suffix py -o output.md
+    dump-src --suffix py -x tests -x __pycache__
+    dump-src --suffix py -x file1.py -x file2.py -x build
     dump-src  # Defaults to current directory
 """
 
@@ -19,6 +21,26 @@ try:
 except PackageNotFoundError:
     # When running as a script before installation
     __version__ = "unknown"
+
+
+def is_excluded(path: Path, exclude_paths: list[Path]) -> bool:
+    """Check if a path should be excluded."""
+    resolved_path = path.resolve()
+
+    for exclude in exclude_paths:
+        # Check if path matches the exclude exactly
+        if resolved_path == exclude:
+            return True
+
+        # Check if path is inside an excluded directory
+        try:
+            resolved_path.relative_to(exclude)
+            return True
+        except ValueError:
+            # Not a subpath
+            continue
+
+    return False
 
 
 def main():
@@ -50,6 +72,16 @@ def main():
     )
 
     parser.add_argument(
+        "-x",
+        "--exclude",
+        dest="excludes",
+        metavar="PATH",
+        action="append",
+        type=str,
+        help="Exclude file or directory (can be used multiple times).",
+    )
+
+    parser.add_argument(
         "srcs",
         metavar="SOURCE_PATH",
         type=str,
@@ -74,6 +106,13 @@ def main():
     suffixes = []
     if args.suffix:
         suffixes = [s.strip() for s in args.suffix.split(",")]
+
+    # Process excludes - convert to resolved Path objects
+    exclude_paths = []
+    if args.excludes:
+        for exclude in args.excludes:
+            exclude_path = Path(exclude).resolve()
+            exclude_paths.append(exclude_path)
 
     # Get absolute path of output file to exclude it
     output_path = None
@@ -107,6 +146,10 @@ def main():
             for path in files:
                 # Skip the output file if it's in the source tree
                 if output_path and path.resolve() == output_path:
+                    continue
+
+                # Skip excluded paths
+                if is_excluded(path, exclude_paths):
                     continue
 
                 try:
