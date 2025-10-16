@@ -134,14 +134,23 @@ def main():
         for src in args.srcs:
             src_path = Path(src)
 
-            if suffixes:
-                # Collect files with any of the specified suffixes
-                files = []
-                for suffix in suffixes:
-                    files.extend(src_path.rglob(f"*.{suffix}"))
-                files = sorted(set(files))  # Remove duplicates and sort
+            # Check if source is a file or directory
+            if src_path.is_file():
+                # If it's a file, add it directly
+                files = [src_path]
+            elif src_path.is_dir():
+                # If it's a directory, use rglob
+                if suffixes:
+                    # Collect files with any of the specified suffixes
+                    files = []
+                    for suffix in suffixes:
+                        files.extend(src_path.rglob(f"*.{suffix}"))
+                    files = sorted(set(files))  # Remove duplicates and sort
+                else:
+                    files = sorted(src_path.rglob("*"))
             else:
-                files = sorted(src_path.rglob("*"))
+                print(f"Error: {src_path} does not exist.", file=sys.stderr)
+                continue
 
             for path in files:
                 # Skip the output file if it's in the source tree
